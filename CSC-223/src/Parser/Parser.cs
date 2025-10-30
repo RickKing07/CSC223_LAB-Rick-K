@@ -42,7 +42,7 @@ namespace Parser
             }
             else
             {
-                throw new ParseException("Expression syntax is invald"); //if it does not start and end with '(' and ')' it is invalid
+                throw new ParseException("Expression syntax is invald, must begin with a ( and must end with a )"); //if it does not start and end with '(' and ')' it is invalid
             }
 
         }
