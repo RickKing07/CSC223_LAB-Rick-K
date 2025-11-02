@@ -8,7 +8,7 @@ using AST;
 using Tokenizer;
 using System.Security.Principal;
 using System.ComponentModel.Design;
-//You are currently stuck on finishing out ParseExpression Content
+//You are currently stuck on finishing out ParseExpression Content, Dealing with nested parenthasis
 //ParseBlockStmnt, how to pass symboltable? how to pass block?
 namespace Parser
 {
@@ -37,7 +37,7 @@ namespace Parser
         {
             if (expression[0]._tkntype == TokenType.LEFT_PAREN && expression[expression.Count - 1]._tkntype == TokenType.RIGHT_PAREN) //check for parenth
             {
-                List<Tokenizer.Token> sublist = expression.GetRange(1, expression.Count - 2); //feeds list of tokens to parseexpression content (does not include the parenthasis)
+                List<Tokenizer.Token> sublist = expression.GetRange(1, expression.Count - 2); //feeds list of tokens to parseexpression content (does not include the left paren)
                 return ParseExpressionContent(sublist);
             }
             else
@@ -45,13 +45,17 @@ namespace Parser
                 throw new ParseException("Expression syntax is invald, must begin with a ( and must end with a )"); //if it does not start and end with '(' and ')' it is invalid
             }
 
+            //Feed all but the initial left paren into parse expresssion content
+            //in expression content, if you find a left paren, feed it to parse expression
+            //if you see a right paren, leave
+            //ultimately, in parseexpressioncontent, save a l and a r to call createbinary node (the l might be composed of a parse expression content)
         }
 
 
 
         public static AST.ExpressionNode ParseExpressionContent(List<Tokenizer.Token> content)
         {
-            //how to do recursivev call with parenth
+            //keep track of a left and right and call cbn on them
             if (content.Count == 0) { throw new ParseException("No content"); }
             if (content.Count == 1) { return HandleSingleToken(content[0]); } //This will handle things like 4
 
@@ -59,7 +63,7 @@ namespace Parser
             {
                 if (content[i]._tkntype == TokenType.LEFT_PAREN)
                 {
-                    // if (content[content.Count - 1]._tkntype == TokenType.RIGHT_PAREN) { return ParseExpression(content); }
+                    // if (content[content.Count - 1]._tkntype == TokenType.RIGHT_PAREN) { return ParseExpression(content); } ((3+4) * (6+4))
                     while (content[i]._tkntype != TokenType.RIGHT_PAREN) { i++; }
                 }
 
