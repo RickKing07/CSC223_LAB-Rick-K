@@ -96,3 +96,4 @@ C:\Users\rickt\OneDrive\Documents\CSC-223\CSC-223\obj\Debug\net9.0\refint\CSC-22
 C:\Users\rickt\OneDrive\Documents\CSC-223\CSC-223\obj\Debug\net9.0\CSC-223.pdb
 C:\Users\rickt\OneDrive\Documents\CSC-223\CSC-223\obj\Debug\net9.0\CSC-223.genruntimeconfig.cache
 C:\Users\rickt\OneDrive\Documents\CSC-223\CSC-223\obj\Debug\net9.0\ref\CSC-223.dll
+C:\Users\rickt\OneDrive\Documents\CSC-223\CSC-223\obj\Debug\net9.0\CSC-223.sourcelink.json
