@@ -508,7 +508,7 @@ namespace AST
         }
         public string Visit(LiteralNode node, int indentLevel)
         {
-            return $"{indentLevel} {(string)node.Value}";
+            return $"{indentLevel} {node.Value}";
         }
         public string Visit(VariableNode node, int indentLevel)
         {
@@ -527,6 +527,8 @@ namespace AST
             string result = "{\n";
             foreach (var line in node.Statements)
             {
+                if (line.Equals('{')) { indentLevel++; } //untested, just guessing at what a indent level change could look like
+                if (line.Equals('}')) { indentLevel--; }
                 result += $"{indentLevel}{line}\n";
             }
             result += '}';
