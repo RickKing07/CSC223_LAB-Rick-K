@@ -7,7 +7,7 @@
  * and assignment operations using a scoped symbol table.
  *
  * Bugs: None known at this time.
- *
+ * change the state of the return value in here and nameanalysis visitors!
  * @author Rahul, Rick, Zachary
  * @date 2025-11-10
  */

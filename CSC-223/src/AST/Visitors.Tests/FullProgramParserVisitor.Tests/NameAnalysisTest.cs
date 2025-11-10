@@ -3,6 +3,8 @@ using Xunit;
 using AST;
 using Utilities;
 
+//  add use parsers to test the code
+
 namespace AST.Visitors.Tests.FullProgramParserVisitor.Tests
 {
     /// <summary>
