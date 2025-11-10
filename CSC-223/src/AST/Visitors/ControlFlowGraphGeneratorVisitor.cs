@@ -6,7 +6,7 @@ namespace AST
     {
         protected Dictionary<T, DLL<T>> _adjacencyList;
 
-        public bool AddVertex(T vertex) //does there need to be a return false case?
+        public bool AddVertex(T vertex)
         {
             if (_adjacencyList.Keys.Contains(vertex))
             {
@@ -18,6 +18,7 @@ namespace AST
 
         public bool AddEdge(T source, T destination) //if not already exists, addd argument exeption if source not in _adj
         {
+            if (!_adjacencyList.Keys.Contains(source) || !_adjacencyList.Keys.Contains(destination)) { throw new ArgumentException($"Node {source} or {destination} not in DiGraph"); }
             _adjacencyList[source].Add(destination);
             return true;
         }
@@ -29,7 +30,8 @@ namespace AST
         }
         public bool RemoveEdge(T source, T destination)
         {
-            //removes a directed edge from source to destination, add argument exeptiopn iof source not in adj
+            if (!_adjacencyList.Keys.Contains(source) || !_adjacencyList.Keys.Contains(destination)) { throw new ArgumentException($"Node {source} or {destination} not in DiGraph"); }
+
             _adjacencyList[source].Remove(destination);
             return true;
         }
@@ -45,6 +47,32 @@ namespace AST
                 AdjacentNodes.Add(node);
             }
             return AdjacentNodes;
+        }
+
+        public IEnumerable<T> GetVertices()
+        {
+            return null;
+            //to be implimented
+        }
+
+        public int VertexCount()
+        {
+            return _adjacencyList.Count();
+        }
+        public int EdgeCount()
+        {
+            int count = 0;
+            foreach (T node in _adjacencyList.Keys)
+            {
+                count += _adjacencyList[node].Count;
+            }
+            return count;
+        }
+
+        public string ToString()
+        {
+            return null;
+            //to be implimented
         }
     }
 }
