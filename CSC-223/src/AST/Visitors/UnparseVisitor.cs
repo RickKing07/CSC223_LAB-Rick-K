@@ -41,7 +41,7 @@ namespace AST
         }
         public string Visit(LiteralNode node, int indentLevel)
         {
-            return $"{GeneralUtils.GetIndentation(indentLevel)} {node.Value}";
+            return $"{GeneralUtils.GetIndentation(indentLevel)}{node.Value}";
         }
         public string Visit(VariableNode node, int indentLevel)
         {

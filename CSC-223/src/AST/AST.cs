@@ -62,6 +62,7 @@ namespace AST
         public BlockStmt(SymbolTable<string, object> SymbolTable)
         {
             this.SymbolTable = SymbolTable;
+            this.Statements = new List<Statement>();
         }
         public override TResult Accept<TParam, TResult>(IVisitor<TParam, TResult> visitor, TParam param)
         {
@@ -484,8 +485,5 @@ namespace AST
         TResult Visit(ReturnStmt node, TParam param);
         TResult Visit(BlockStmt node, TParam param);
     }
-
-
-
 
 }
