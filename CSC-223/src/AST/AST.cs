@@ -19,7 +19,6 @@ using Utilities;
 
 namespace AST
 {
-    #region Statements
 
     /// <summary>
     /// Base abstract class for all statement nodes in the AST.
@@ -35,6 +34,7 @@ namespace AST
         /// <param name="level">Indentation level (0 = top-level)</param>
         /// <returns>Unparsed string for this statement</returns>
         public abstract string Unparse(int level = 0);
+        public abstract TResult Accept<TParam, TResult>(IVisitor<TParam, TResult> visitor, TParam param);
 
     }
 
@@ -62,6 +62,10 @@ namespace AST
         public BlockStmt(SymbolTable<string, object> SymbolTable)
         {
             this.SymbolTable = SymbolTable;
+        }
+        public override TResult Accept<TParam, TResult>(IVisitor<TParam, TResult> visitor, TParam param)
+        {
+            return visitor.Visit(this, param);
         }
 
         /// <summary>
@@ -118,6 +122,10 @@ namespace AST
             Variable = variable;
             Expression = expression;
         }
+        public override TResult Accept<TParam, TResult>(IVisitor<TParam, TResult> visitor, TParam param)
+        {
+            return visitor.Visit(this, param);
+        }
 
         /// <summary>
         /// Unparse the assignment using indentation for the provided level.
@@ -164,11 +172,13 @@ namespace AST
             string indent = GeneralUtils.GetIndentation(level);
             return $"{indent}return {Expression.Unparse()};";
         }
+        public override TResult Accept<TParam, TResult>(IVisitor<TParam, TResult> visitor, TParam param)
+        {
+            return visitor.Visit(this, param);
+        }
     }
 
-    #endregion
 
-    #region Expressions
 
     /// <summary>
     /// Base abstract class for expression nodes. Expressions can be unparsed
@@ -258,9 +268,7 @@ namespace AST
         }
     }
 
-    #endregion
 
-    #region Operators and Binary Operators
 
     /// <summary>
     /// Abstract base class for operator expressions (unary, binary, etc.).
@@ -456,7 +464,6 @@ namespace AST
         }
     }
 
-    #endregion
 
 
     public interface IVisitor<TParam, TResult>
@@ -537,87 +544,259 @@ namespace AST
             return result;
         }
     }
+    public class EvaluationException : Exception
+    {
+        public EvaluationException(string message) : base(message) { }
+    }
+
+
+
+
+
+    /// <summary>
+    /// Visitor that evaluates an AST, executing the program and returning the final value
+    /// Uses symbol tables to store variable values during execution
+    /// </summary>
     public class EvaluateVisitor : IVisitor<SymbolTable<string, object>, object>
     {
-        // public float Visit(PlusNode node, SymbolTable<string, object> symbolTable)
-        // {
-        //     return null;
-        // }
-    }
-    public class NameAnalysisVisitor : IVisitor<Tuple<SymbolTable<string, object>, Statement>, bool>
-    {
-        public bool Visit(PlusNode node, Tuple<SymbolTable<string, object>, Statement> param)
-        {
-            return node.Left.Accept(this, param) && node.Right.Accept(this, param);
-        }
-        public bool Visit(MinusNode node, Tuple<SymbolTable<string, object>, Statement> param)
-        {
-            return node.Left.Accept(this, param) && node.Right.Accept(this, param);
-        }
-        public bool Visit(TimesNode node, Tuple<SymbolTable<string, object>, Statement> param)
-        {
-            return node.Left.Accept(this, param) && node.Right.Accept(this, param);
-        }
-        public bool Visit(FloatDivNode node, Tuple<SymbolTable<string, object>, Statement> param)
-        {
-            return node.Left.Accept(this, param) && node.Right.Accept(this, param);
-        }
-        public bool Visit(IntDivNode node, Tuple<SymbolTable<string, object>, Statement> param)
-        {
-            return node.Left.Accept(this, param) && node.Right.Accept(this, param);
-        }
-        public bool Visit(ModulusNode node, Tuple<SymbolTable<string, object>, Statement> param)
-        {
-            return node.Left.Accept(this, param) && node.Right.Accept(this, param);
-        }
-        public bool Visit(ExponentiationNode node, Tuple<SymbolTable<string, object>, Statement> param)
-        {
-            return node.Left.Accept(this, param) && node.Right.Accept(this, param);
-        }
-        public bool Visit(VariableNode node, Tuple<SymbolTable<string, object>, Statement> param)
-        {
-            SymbolTable<string, object> symbolTable = param.Item1;
+        // Flag to indicate if a return statement has been encountered
+        private bool _returnEncountered;
 
-            string varName = node.Name;
-            if (symbolTable.ContainsKey(varName))
+        // Value from the return statement
+        private object _returnValue;
+
+        /// <summary>
+        /// Initializes a new instance of the EvaluateVisitor class
+        /// </summary>
+        public EvaluateVisitor()
+        {
+            _returnEncountered = false;
+            _returnValue = null;
+        }
+
+        /// <summary>
+        /// Evaluates the given AST and returns the result
+        /// </summary>
+        /// <param name="ast">The AST to evaluate</param>
+        /// <returns>The result of the evaluation (typically from a return statement)</returns>
+        public object Evaluate(Statement ast)
+        {
+            _returnEncountered = false;
+            _returnValue = null;
+
+            // Execute the AST with a null initial scope
+            // (the BlockStmt will use its own symbol table)
+            ast.Accept(this, null);
+
+            return _returnValue;
+        }
+
+        public object Visit(PlusNode node, SymbolTable<string, object> symbolTable)
+        {
+            object left = node.Left.Accept(this, symbolTable);
+            object right = node.Right.Accept(this, symbolTable);
+
+            if (left is int l && right is int r) { return l + r; }
+            return Convert.ToDouble(left) + Convert.ToDouble(right);
+        }
+
+        public object Visit(MinusNode node, SymbolTable<string, object> symbolTable)
+        {
+            object left = node.Left.Accept(this, symbolTable);
+            object right = node.Right.Accept(this, symbolTable);
+
+            if (left is int l && right is int r) { return l - r; }
+            return Convert.ToDouble(left) - Convert.ToDouble(right);
+        }
+
+        public object Visit(TimesNode node, SymbolTable<string, object> symbolTable)
+        {
+            object left = node.Left.Accept(this, symbolTable);
+            object right = node.Right.Accept(this, symbolTable);
+
+            if (left is int l && right is int r) { return l * r; }
+            return Convert.ToDouble(left) * Convert.ToDouble(right);
+        }
+
+        public object Visit(FloatDivNode node, SymbolTable<string, object> symbolTable)
+        {
+            object left = node.Left.Accept(this, symbolTable);
+            object right = node.Right.Accept(this, symbolTable);
+            double r = Convert.ToDouble(right);
+            if (r == 0.0)
+                throw new EvaluationException("Cannot divide by zero");
+
+            double l = Convert.ToDouble(left);
+            return l / r;
+        }
+
+        public object Visit(IntDivNode node, SymbolTable<string, object> symbolTable)
+        {
+            object left = node.Left.Accept(this, symbolTable);
+            object right = node.Right.Accept(this, symbolTable);
+            int r = Convert.ToInt32(right);
+            if (r == 0)
+                throw new EvaluationException("Cannot divide by zero");
+
+            int l = Convert.ToInt32(left);
+            return l / r;
+        }
+
+        public object Visit(ModulusNode node, SymbolTable<string, object> symbolTable)
+        {
+            object left = node.Left.Accept(this, symbolTable);
+            object right = node.Right.Accept(this, symbolTable);
+
+            if (left is int l && right is int r)
+            {
+                if (r == 0) { throw new EvaluationException("Cannot divide by zero"); }
+                return l % r;
+            }
+            if (Convert.ToDouble(right) == 0.0) { throw new EvaluationException("Cannot divide by float zero"); }
+
+            return Convert.ToDouble(left) % Convert.ToDouble(right);
+        }
+
+        public object Visit(ExponentiationNode node, SymbolTable<string, object> symbolTable)
+        {
+            object left = node.Left.Accept(this, symbolTable);
+            object right = node.Right.Accept(this, symbolTable);
+
+            if (left is int l && right is int r)
+            {
+                return Math.Pow(l, r);
+            }
+
+            return Math.Pow(Convert.ToDouble(left), Convert.ToDouble(right));
+
+        }
+
+
+
+        public object Visit(VariableNode node, SymbolTable<string, object> symbolTable)
+        {
+            if (symbolTable.TryGetValue(node.Name, out object value)) { return value; }
+
+            throw new EvaluationException($"Undefined variable '{node.Name}'");
+        }
+
+
+        public object Visit(LiteralNode node, SymbolTable<string, object> symbolTable)
+        {
+            return node.Value;
+        }
+
+
+
+        public object Visit(AssignmentStmt node, SymbolTable<string, object> symbolTable)
+        {
+            // two jobs accpets the change
+            object value = node.Expression.Accept(this, symbolTable);
+            string name = node.Variable.Name;
+
+            if (symbolTable.ContainsKeyLocal(name))
+            {
+                symbolTable[name] = value;
+            }
+            else { symbolTable.Add(name, value); }
+
+            return _returnValue;
+        }
+
+        public object Visit(ReturnStmt node, SymbolTable<string, object> symbolTable)
+        {
+            return node.Expression.Accept(this, symbolTable);
+        }
+
+        public object Visit(BlockStmt node, SymbolTable<string, object> symbolTable)
+        {
+            // Use this block's symbol table, which is already linked to its parent
+            SymbolTable<string, object> currentScope = node.SymbolTable;
+
+            foreach (var stmt in node.Statements)
+            {
+                object result = stmt.Accept(this, currentScope);
+                if (result != null) { return result; }
+            }
+            return _returnValue;
+        }
+        public class NameAnalysisVisitor : IVisitor<Tuple<SymbolTable<string, object>, Statement>, bool>
+        {
+            public bool Visit(PlusNode node, Tuple<SymbolTable<string, object>, Statement> param)
+            {
+                return node.Left.Accept(this, param) && node.Right.Accept(this, param);
+            }
+            public bool Visit(MinusNode node, Tuple<SymbolTable<string, object>, Statement> param)
+            {
+                return node.Left.Accept(this, param) && node.Right.Accept(this, param);
+            }
+            public bool Visit(TimesNode node, Tuple<SymbolTable<string, object>, Statement> param)
+            {
+                return node.Left.Accept(this, param) && node.Right.Accept(this, param);
+            }
+            public bool Visit(FloatDivNode node, Tuple<SymbolTable<string, object>, Statement> param)
+            {
+                return node.Left.Accept(this, param) && node.Right.Accept(this, param);
+            }
+            public bool Visit(IntDivNode node, Tuple<SymbolTable<string, object>, Statement> param)
+            {
+                return node.Left.Accept(this, param) && node.Right.Accept(this, param);
+            }
+            public bool Visit(ModulusNode node, Tuple<SymbolTable<string, object>, Statement> param)
+            {
+                return node.Left.Accept(this, param) && node.Right.Accept(this, param);
+            }
+            public bool Visit(ExponentiationNode node, Tuple<SymbolTable<string, object>, Statement> param)
+            {
+                return node.Left.Accept(this, param) && node.Right.Accept(this, param);
+            }
+            public bool Visit(VariableNode node, Tuple<SymbolTable<string, object>, Statement> param)
+            {
+                SymbolTable<string, object> symbolTable = param.Item1;
+
+                string varName = node.Name;
+                if (symbolTable.ContainsKey(varName))
+                {
+                    return true;
+                }
+                else
+                {
+                    Console.WriteLine($"{varName} is not declared in this scope"); //Check for nested scope issues stuff
+                    return false;
+                }
+            }
+            public bool Visit(LiteralNode node, Tuple<SymbolTable<string, object>, Statement> param)
             {
                 return true;
             }
-            else
+            public bool Visit(AssignmentStmt node, Tuple<SymbolTable<string, object>, Statement> param)
             {
-                Console.WriteLine($"{varName} is not declared in this scope"); //Check for nested scope issues stuff
-                return false;
+                SymbolTable<string, object> symbolTable = param.Item1;
+                bool expressionValid = node.Expression.Accept(this, param);
+                string varName = node.Variable.Name;
+                symbolTable.Add(varName, null);
+                return expressionValid;
             }
-        }
-        public bool Visit(LiteralNode node, Tuple<SymbolTable<string, object>, Statement> param)
-        {
-            return true;
-        }
-        public bool Visit(AssignmentStmt node, Tuple<SymbolTable<string, object>, Statement> param)
-        {
-            SymbolTable<string, object> symbolTable = param.Item1;
-            bool expressionValid = node.Expression.Accept(this, param);
-            string varName = node.Variable.Name;
-            symbolTable.Add(varName, null);
-            return expressionValid;
-        }
-        public bool Visit(ReturnStmt node, Tuple<SymbolTable<string, object>, Statement> param)
-        {
-            return node.Expression.Accept(this, param);
-        }
-        public bool Visit(BlockStmt node, Tuple<SymbolTable<string, object>, Statement> param)
-        {
-            SymbolTable<string, object> symbolTable = param.Item1;
-            bool valid = true;
-
-            foreach (var statment in node.Statements)
+            public bool Visit(ReturnStmt node, Tuple<SymbolTable<string, object>, Statement> param)
             {
-                if (!statment.Accept(this, param))
+                return node.Expression.Accept(this, param);
+            }
+            public bool Visit(BlockStmt node, Tuple<SymbolTable<string, object>, Statement> param)
+            {
+                SymbolTable<string, object> symbolTable = param.Item1;
+                bool valid = true;
+
+                foreach (var statment in node.Statements)
                 {
-                    valid = false;
+                    if (!statment.Accept(this, param))
+                    {
+                        valid = false;
+                    }
+
                 }
+                return valid;
             }
         }
-    }
 
+    }
 }
