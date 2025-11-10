@@ -43,7 +43,7 @@ namespace AST
             SymbolTable<string, object> symbolTable = param.Item1;
 
             string varName = node.Name;
-            if (symbolTable.ContainsKey(varName))
+            if (symbolTable.ContainsKey(varName)) //Should this be contains key local? check this out please
             {
                 return true;
             }
@@ -71,7 +71,6 @@ namespace AST
         }
         public bool Visit(BlockStmt node, Tuple<SymbolTable<string, object>, Statement> param)
         {
-            SymbolTable<string, object> symbolTable = param.Item1;
             bool valid = true;
 
             foreach (var statment in node.Statements)
