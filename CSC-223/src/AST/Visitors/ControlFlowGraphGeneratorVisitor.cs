@@ -6,13 +6,18 @@ namespace AST
     {
         protected Dictionary<T, DLL<T>> _adjacencyList;
 
+        public DiGraph()
+        {
+            this._adjacencyList = new Dictionary<T, DLL<T>>();
+        }
+
         public bool AddVertex(T vertex)
         {
             if (_adjacencyList.Keys.Contains(vertex))
             {
                 return false;
             }
-            _adjacencyList.Add(vertex, null);
+            _adjacencyList.Add(vertex, new DLL<T>());
             return true;
         }
 
@@ -51,8 +56,10 @@ namespace AST
 
         public IEnumerable<T> GetVertices()
         {
-            return null;
-            //to be implimented
+            foreach (T node in _adjacencyList.Keys)
+            {
+                yield return node;
+            }
         }
 
         public int VertexCount()
@@ -71,8 +78,8 @@ namespace AST
 
         public string ToString()
         {
-            return null;
-            //to be implimented
+            //Just returns the adjlist in string form
+            return _adjacencyList.ToString();
         }
     }
 }
