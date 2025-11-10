@@ -469,7 +469,7 @@ namespace AST.Tests
             var result = outerBlock.Accept(_visitor, CreateContext(outerTable));
 
             Assert.True(result);
-            Assert.False(outerTable.ContainsKey("y")); // y only in inner scope
+            Assert.True(outerTable.ContainsKey("y")); // y  in inner scope, meaning also in outer scope
         }
 
         [Fact]

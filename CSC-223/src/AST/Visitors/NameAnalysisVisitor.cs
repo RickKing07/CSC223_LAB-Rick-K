@@ -71,7 +71,7 @@ namespace AST
             SymbolTable<string, object> symbolTable = param.Item1;
 
             string varName = node.Name;
-            // Checks if the variable name exists in the current symbol table (scope).
+
             if (symbolTable.ContainsKey(varName)) // Should this be contains key local? check this out please
             {
                 return true;
@@ -107,7 +107,7 @@ namespace AST
             // If expression is valid, add/re-add the variable to the symbol table
             // to mark it as defined in the current scope for future references.
             string varName = node.Variable.Name;
-            symbolTable.Add(varName, null); // Note: Assuming Add handles both first-time and re-assignment.
+            symbolTable.Add(varName, null);
 
             return expressionValid;
         }
