@@ -8,7 +8,8 @@ using AST;
 using Tokenizer;
 using System.Security.Principal;
 using System.ComponentModel.Design;
-//You are currently stuck on finishing out ParseExpression Content
+using Xunit.Sdk;
+//You are currently stuck on finishing out ParseExpression Content, Dealing with nested parenthasis
 //ParseBlockStmnt, how to pass symboltable? how to pass block?
 namespace Parser
 {
@@ -32,45 +33,142 @@ namespace Parser
 
         }
 
-        // helper function to parse the content of the expression
+
         private static AST.ExpressionNode ParseExpression(List<Tokenizer.Token> expression)
         {
-            if (expression[0]._tkntype == TokenType.LEFT_PAREN && expression[expression.Count - 1]._tkntype == TokenType.RIGHT_PAREN) //check for parenth
+            // Handle base cases
+            if (expression.Count == 0)
+                throw new ParseException("Empty expression");
+            if (expression.Count == 1)
+                return HandleSingleToken(expression[0]);
+
+            // Unwrap outer parentheses if they wrap the entire expression
+            while (expression.Count > 1 &&
+                   expression[0]._tkntype == TokenType.LEFT_PAREN &&
+                   FindMatchingParen(expression, 0) == expression.Count - 1)
             {
-                List<Tokenizer.Token> sublist = expression.GetRange(1, expression.Count - 2); //feeds list of tokens to parseexpression content (does not include the parenthasis)
-                return ParseExpressionContent(sublist);
-            }
-            else
-            {
-                throw new ParseException("Expression syntax is invald"); //if it does not start and end with '(' and ')' it is invalid
+                expression = expression.GetRange(1, expression.Count - 2);
             }
 
+            // Re-check after unwrapping
+            if (expression.Count == 1)
+                return HandleSingleToken(expression[0]);
+
+            return ParseExpressionContent(expression);
         }
 
-
-
-        public static AST.ExpressionNode ParseExpressionContent(List<Tokenizer.Token> content)
+        private static int FindMatchingParen(List<Tokenizer.Token> tokens, int openIndex)
         {
-            //how to do recursivev call with parenth
-            if (content.Count == 0) { throw new ParseException("No content"); }
-            if (content.Count == 1) { return HandleSingleToken(content[0]); } //This will handle things like 4
+            int depth = 1;
+            for (int i = openIndex + 1; i < tokens.Count; i++)
+            {
+                if (tokens[i]._tkntype == TokenType.LEFT_PAREN) depth++;
+                else if (tokens[i]._tkntype == TokenType.RIGHT_PAREN) depth--;
+                if (depth == 0) return i;
+            }
+            return -1; // Unmatched parenthesis
+        }
+
+        private static AST.ExpressionNode ParseExpressionContent(List<Tokenizer.Token> content)
+        {
+            if (content.Count == 0)
+                throw new ParseException("Null Expression");
+            if (content.Count == 1)
+                return HandleSingleToken(content[0]);
+
+            // Scan for operators at depth 0
+            int depth = 0;
+            int operatorCount = 0;
 
             for (int i = 0; i < content.Count; i++)
             {
                 if (content[i]._tkntype == TokenType.LEFT_PAREN)
                 {
-                    // if (content[content.Count - 1]._tkntype == TokenType.RIGHT_PAREN) { return ParseExpression(content); }
-                    while (content[i]._tkntype != TokenType.RIGHT_PAREN) { i++; }
+                    depth++;
                 }
-
-                if (content[i]._tkntype == TokenType.OPERATOR)   //if its an operator, left stuff is an expression node, right stuff is an expression node
+                else if (content[i]._tkntype == TokenType.RIGHT_PAREN)
                 {
-                    return CreateBinaryOperatorNode(content[i]._value, ParseExpressionContent(content.GetRange(0, i)), ParseExpressionContent(content.GetRange(i + 1, content.Count - i - 1))); //Return binaryopnode
+                    depth--;
+                }
+                else if (depth == 0 && content[i]._tkntype == TokenType.OPERATOR)
+                {
+                    operatorCount++;
+                    if (operatorCount > 1)
+                    {
+                        throw new ParseException("Multiple operators at same level - expression must be fully parenthesized");
+                    }
+
+                    // Found the operator at depth 0 - split here
+                    var left = content.GetRange(0, i);
+                    var right = content.GetRange(i + 1, content.Count - i - 1);
+
+                    return CreateBinaryOperatorNode(
+                        content[i]._value,
+                        ParseExpression(left),
+                        ParseExpression(right)
+                    );
                 }
             }
-            throw new ParseException("Not a valid expression syntax");
+
+            // Check for unbalanced parentheses
+            if (depth != 0)
+                throw new ParseException("must begin with a ( and must end with a ). Missing )");
+
+            // If we get here, no operator was found at depth 0
+            throw new ParseException("Invalid operator");
         }
 
+        // helper function to parse the content of the expression
+        // private static AST.ExpressionNode ParseExpression(List<Tokenizer.Token> expression)
+        // {
+        //     // Parses an expression enclosed in parentheses.
+        //     // Consumes only the first '(' and lets ParseExpressionContent handle the rest.
+        //     if (expression.Count == 1) return HandleSingleToken(expression[0]);
+        //     if (expression.Count == 0 || expression[0]._tkntype != TokenType.LEFT_PAREN || expression[expression.Count - 1]._tkntype != TokenType.RIGHT_PAREN)
+        //         throw new ParseException("Missing ) or must begin with a (");
+
+        //     // Pass everything after the first '(' into ParseExpressionContent
+        //     var inner = expression.GetRange(1, expression.Count - 2);
+        //     return ParseExpressionContent(inner);
+        // }
+
+
+        // public static AST.ExpressionNode ParseExpressionContent(List<Tokenizer.Token> content)
+        // {
+        //     //(5*3)+1
+        //     for (int i = 0; i < content.Count; i++)
+        //     {
+
+        //         if (content.Count == 0) throw new ParseException("Null Expression");
+        //         if (content.Count == 1) return HandleSingleToken(content[i]);
+        //         if (content[0]._tkntype == TokenType.LEFT_PAREN && content[content.Count - 1]._tkntype == TokenType.RIGHT_PAREN) return ParseExpression(content.GetRange(1, content.Count - 2));
+
+        //         if (content[i]._tkntype == TokenType.LEFT_PAREN)
+        //         {
+        //             int depth = 1;
+        //             i++;
+
+        //             while (depth > 0 && i < content.Count)
+        //             {
+        //                 if (content[i]._tkntype == TokenType.RIGHT_PAREN)
+        //                 {
+        //                     depth--;
+        //                 }
+        //                 if (content[i]._tkntype == TokenType.LEFT_PAREN)
+        //                 {
+        //                     depth++;
+        //                 }
+        //                 i++;
+        //             }
+        //         }
+        //         if (i >= content.Count) throw new ParseException("Imalenced PArenthesisisisisisisisisis");
+        //         if (content[i]._tkntype == TokenType.OPERATOR)
+        //         {
+        //             return CreateBinaryOperatorNode(content[i]._value, ParseExpression(content.GetRange(0, i)), ParseExpression(content.GetRange(i + 1, content.Count - i - 1)));
+        //         }
+        //     }
+        //     throw new ParseException("Invalid operator");
+        // }
 
         public static AST.ExpressionNode HandleSingleToken(Tokenizer.Token token)
         {
@@ -141,33 +239,51 @@ namespace Parser
 
             //line by line
             var tknzier = new TokenizerImpl();
-            List<Tokenizer.Token> content = [];
-
-
-
-            foreach (string line in lines)
+            int i = 0;
+            while (i < lines.Count)
             {
-                content = [];
-                content.AddRange(tknzier.Tokenize(line));
+                string line = lines[i].Trim();
+                var content = tknzier.Tokenize(line);
+
+                // Skip lines with no tokens (including empty lines)
+                if (content.Count == 0)
+                {
+                    i++;
+                    continue;
+                }
+
                 if (content[0]._tkntype == TokenType.LEFT_CURLY)
                 {
-                    ParseBlockStmt(lines.GetRange(1, lines.Count - 1), Data);
+                    // add everything Blockstmt handles it with peeling head recursion
+                    var block = ParseBlockStmt(lines.GetRange(i, lines.Count - i), Data);
+                    stmt.Statements.Add(block);
+
+                    // eat all the lines outer and recursion will take care of inner
+                    int curlyCount = 1;
+                    int lineBeingEaten = i + 1;
+                    while (lineBeingEaten < lines.Count && curlyCount > 0)
+                    {
+                        foreach (var token in tknzier.Tokenize(lines[lineBeingEaten]))
+                        {
+                            if (token._tkntype == TokenType.LEFT_CURLY) { curlyCount++; }
+                            else if (token._tkntype == TokenType.RIGHT_CURLY) { curlyCount--; }
+                        }
+                        lineBeingEaten++;
+                    }
+                    i += lineBeingEaten;
+
                 }
-                else if (content[0]._tkntype == TokenType.RIGHT_CURLY)       //add something to ensure balance
+                else if (content[0]._tkntype == TokenType.RIGHT_CURLY)
                 {
-                    //ParseStmtList(lines.GetRange(1, lines.Count - 1), DefaultBuilder.CreateBlockStmt(lines)); //write this correctly, and create BlockStmnt might need to be modified
+                    return;
                 }
                 else
                 {
-                    ParseStatement(content, Data);
+                    var onelinerStmt = ParseStatement(content, Data);
+                    stmt.Statements.Add(onelinerStmt);
+                    i++;
                 }
-
             }
-
-
-            //if left parenthasi, call parseblockstatment
-
-            //if right parenthasi, escape recursion by passing back all info in a symbol table, and it will return if list<string> is empty
         }
 
         public static AST.BlockStmt ParseBlockStmt(List<string> lines, SymbolTable<string, object> keyval)

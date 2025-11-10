@@ -1,0 +1,181 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.Tracing;
+using System.Reflection;
+using System.Reflection.Metadata;
+using Microsoft.VisualStudio.TestPlatform.ObjectModel;
+using Utilities;
+
+namespace AST
+{
+    public class EvaluateVisitor : IVisitor<SymbolTable<string, object>, object>
+    {
+
+        public class EvaluationException : Exception
+        {
+            public EvaluationException(string message) : base(message) { }
+        }
+        // Flag to indicate if a return statement has been encountered
+        private bool _returnEncountered;
+
+        // Value from the return statement
+        private object _returnValue;
+
+        /// <summary>
+        /// Initializes a new instance of the EvaluateVisitor class
+        /// </summary>
+        public EvaluateVisitor()
+        {
+            _returnEncountered = false;
+            _returnValue = null;
+        }
+
+        /// <summary>
+        /// Evaluates the given AST and returns the result
+        /// </summary>
+        /// <param name="ast">The AST to evaluate</param>
+        /// <returns>The result of the evaluation (typically from a return statement)</returns>
+        public object Evaluate(Statement ast)
+        {
+            _returnEncountered = false;
+            _returnValue = null;
+
+            // Execute the AST with a null initial scope
+            // (the BlockStmt will use its own symbol table)
+            _returnValue = ast.Accept(this, null);  //Added _returnValue = -Rick
+
+            return _returnValue;
+        }
+
+        public object Visit(PlusNode node, SymbolTable<string, object> symbolTable)
+        {
+            object left = node.Left.Accept(this, symbolTable);
+            object right = node.Right.Accept(this, symbolTable);
+
+            if (left is int l && right is int r) { return l + r; }
+            return Convert.ToDouble(left) + Convert.ToDouble(right);
+        }
+
+        public object Visit(MinusNode node, SymbolTable<string, object> symbolTable)
+        {
+            object left = node.Left.Accept(this, symbolTable);
+            object right = node.Right.Accept(this, symbolTable);
+
+            if (left is int l && right is int r) { return l - r; }
+            return Convert.ToDouble(left) - Convert.ToDouble(right);
+        }
+
+        public object Visit(TimesNode node, SymbolTable<string, object> symbolTable)
+        {
+            object left = node.Left.Accept(this, symbolTable);
+            object right = node.Right.Accept(this, symbolTable);
+
+            if (left is int l && right is int r) { return l * r; }
+            return Convert.ToDouble(left) * Convert.ToDouble(right);
+        }
+
+        public object Visit(FloatDivNode node, SymbolTable<string, object> symbolTable)
+        {
+            object left = node.Left.Accept(this, symbolTable);
+            object right = node.Right.Accept(this, symbolTable);
+            double r = Convert.ToDouble(right);
+            if (r == 0.0)
+                throw new EvaluationException("Cannot divide by zero");
+
+            double l = Convert.ToDouble(left);
+            return l / r;
+        }
+
+        public object Visit(IntDivNode node, SymbolTable<string, object> symbolTable)
+        {
+            object left = node.Left.Accept(this, symbolTable);
+            object right = node.Right.Accept(this, symbolTable);
+            int r = Convert.ToInt32(right);
+            if (r == 0)
+                throw new EvaluationException("Cannot divide by zero");
+
+            int l = Convert.ToInt32(left);
+            return l / r;
+        }
+
+        public object Visit(ModulusNode node, SymbolTable<string, object> symbolTable)
+        {
+            object left = node.Left.Accept(this, symbolTable);
+            object right = node.Right.Accept(this, symbolTable);
+
+            if (left is int l && right is int r)
+            {
+                if (r == 0) { throw new EvaluationException("Cannot divide by zero"); }
+                return l % r;
+            }
+            if (Convert.ToDouble(right) == 0.0) { throw new EvaluationException("Cannot divide by float zero"); }
+
+            return Convert.ToDouble(left) % Convert.ToDouble(right);
+        }
+
+        public object Visit(ExponentiationNode node, SymbolTable<string, object> symbolTable)
+        {
+            object left = node.Left.Accept(this, symbolTable);
+            object right = node.Right.Accept(this, symbolTable);
+
+            if (left is int l && right is int r)
+            {
+                return Math.Pow(l, r);
+            }
+
+            return Math.Pow(Convert.ToDouble(left), Convert.ToDouble(right));
+
+        }
+
+
+
+        public object Visit(VariableNode node, SymbolTable<string, object> symbolTable)
+        {
+            if (symbolTable.TryGetValue(node.Name, out object value)) { return value; }
+
+            throw new EvaluationException($"Undefined variable '{node.Name}'");
+        }
+
+
+        public object Visit(LiteralNode node, SymbolTable<string, object> symbolTable)
+        {
+            return node.Value;
+        }
+
+
+
+        public object Visit(AssignmentStmt node, SymbolTable<string, object> symbolTable)
+        {
+            // two jobs accpets the change
+            object value = node.Expression.Accept(this, symbolTable);
+            string name = node.Variable.Name;
+
+            if (symbolTable.ContainsKeyLocal(name))
+            {
+                symbolTable[name] = value;
+            }
+            else { symbolTable.Add(name, value); }
+
+            return _returnValue;
+        }
+
+        public object Visit(ReturnStmt node, SymbolTable<string, object> symbolTable)
+        {
+            return node.Expression.Accept(this, symbolTable);
+        }
+
+        public object Visit(BlockStmt node, SymbolTable<string, object> symbolTable)
+        {
+            // Use this block's symbol table, which is already linked to its parent
+            SymbolTable<string, object> currentScope = node.SymbolTable;
+
+            foreach (var stmt in node.Statements)
+            {
+                object result = stmt.Accept(this, currentScope);
+                if (result != null) { return result; }
+            }
+            return _returnValue;
+        }
+
+    }
+}

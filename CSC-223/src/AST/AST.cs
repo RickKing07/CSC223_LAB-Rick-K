@@ -12,11 +12,13 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Tracing;
+using System.Reflection;
+using System.Reflection.Metadata;
+using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 using Utilities;
 
 namespace AST
 {
-    #region Statements
 
     /// <summary>
     /// Base abstract class for all statement nodes in the AST.
@@ -32,6 +34,8 @@ namespace AST
         /// <param name="level">Indentation level (0 = top-level)</param>
         /// <returns>Unparsed string for this statement</returns>
         public abstract string Unparse(int level = 0);
+        public abstract TResult Accept<TParam, TResult>(IVisitor<TParam, TResult> visitor, TParam param);
+
     }
 
     /// <summary>
@@ -58,6 +62,11 @@ namespace AST
         public BlockStmt(SymbolTable<string, object> SymbolTable)
         {
             this.SymbolTable = SymbolTable;
+            this.Statements = new List<Statement>();
+        }
+        public override TResult Accept<TParam, TResult>(IVisitor<TParam, TResult> visitor, TParam param)
+        {
+            return visitor.Visit(this, param);
         }
 
         /// <summary>
@@ -114,6 +123,10 @@ namespace AST
             Variable = variable;
             Expression = expression;
         }
+        public override TResult Accept<TParam, TResult>(IVisitor<TParam, TResult> visitor, TParam param)
+        {
+            return visitor.Visit(this, param);
+        }
 
         /// <summary>
         /// Unparse the assignment using indentation for the provided level.
@@ -160,11 +173,13 @@ namespace AST
             string indent = GeneralUtils.GetIndentation(level);
             return $"{indent}return {Expression.Unparse()};";
         }
+        public override TResult Accept<TParam, TResult>(IVisitor<TParam, TResult> visitor, TParam param)
+        {
+            return visitor.Visit(this, param);
+        }
     }
 
-    #endregion
 
-    #region Expressions
 
     /// <summary>
     /// Base abstract class for expression nodes. Expressions can be unparsed
@@ -178,6 +193,8 @@ namespace AST
         /// <param name="level">Indentation level (optional helper for nested formatting)</param>
         /// <returns>Unparsed expression text</returns>
         public abstract string Unparse(int level = 0);
+
+        public abstract TResult Accept<TParam, TResult>(IVisitor<TParam, TResult> visitor, TParam param);
     }
 
     /// <summary>
@@ -199,7 +216,6 @@ namespace AST
         {
             Value = value;
         }
-
         /// <summary>
         /// Unparse the literal by delegating to its ToString representation.
         /// Note: if special formatting is required (e.g., quoting strings), handle
@@ -210,6 +226,11 @@ namespace AST
         public override string Unparse(int level = 0)
         {
             return Value.ToString();
+        }
+
+        public override TResult Accept<TParam, TResult>(IVisitor<TParam, TResult> visitor, TParam param)
+        {
+            return visitor.Visit(this, param);
         }
     }
 
@@ -241,11 +262,14 @@ namespace AST
         {
             return Name;
         }
+
+        public override TResult Accept<TParam, TResult>(IVisitor<TParam, TResult> visitor, TParam param)
+        {
+            return visitor.Visit(this, param);
+        }
     }
 
-    #endregion
 
-    #region Operators and Binary Operators
 
     /// <summary>
     /// Abstract base class for operator expressions (unary, binary, etc.).
@@ -302,6 +326,11 @@ namespace AST
         {
             return $"({Left.Unparse(level)} + {Right.Unparse(level)})";
         }
+
+        public override TResult Accept<TParam, TResult>(IVisitor<TParam, TResult> visitor, TParam param)
+        {
+            return visitor.Visit(this, param);
+        }
     }
 
     /// <summary>
@@ -318,6 +347,11 @@ namespace AST
         public override string Unparse(int level = 0)
         {
             return $"({Left.Unparse(level)} - {Right.Unparse(level)})";
+        }
+
+        public override TResult Accept<TParam, TResult>(IVisitor<TParam, TResult> visitor, TParam param)
+        {
+            return visitor.Visit(this, param);
         }
     }
 
@@ -336,6 +370,11 @@ namespace AST
         {
             return $"({Left.Unparse(level)} * {Right.Unparse(level)})";
         }
+
+        public override TResult Accept<TParam, TResult>(IVisitor<TParam, TResult> visitor, TParam param)
+        {
+            return visitor.Visit(this, param);
+        }
     }
 
     /// <summary>
@@ -352,6 +391,11 @@ namespace AST
         public override string Unparse(int level = 0)
         {
             return $"({Left.Unparse(level)} / {Right.Unparse(level)})";
+        }
+
+        public override TResult Accept<TParam, TResult>(IVisitor<TParam, TResult> visitor, TParam param)
+        {
+            return visitor.Visit(this, param);
         }
     }
 
@@ -371,6 +415,11 @@ namespace AST
         {
             return $"({Left.Unparse(level)} // {Right.Unparse(level)})";
         }
+
+        public override TResult Accept<TParam, TResult>(IVisitor<TParam, TResult> visitor, TParam param)
+        {
+            return visitor.Visit(this, param);
+        }
     }
 
     /// <summary>
@@ -387,6 +436,11 @@ namespace AST
         public override string Unparse(int level = 0)
         {
             return $"({Left.Unparse(level)} % {Right.Unparse(level)})";
+        }
+
+        public override TResult Accept<TParam, TResult>(IVisitor<TParam, TResult> visitor, TParam param)
+        {
+            return visitor.Visit(this, param);
         }
     }
 
@@ -405,7 +459,31 @@ namespace AST
         {
             return $"({Left.Unparse(level)} ** {Right.Unparse(level)})";
         }
+        public override TResult Accept<TParam, TResult>(IVisitor<TParam, TResult> visitor, TParam param)
+        {
+            return visitor.Visit(this, param);
+        }
     }
 
-    #endregion
+
+
+    public interface IVisitor<TParam, TResult>
+    {
+        // Expression nodes
+        TResult Visit(PlusNode node, TParam param);
+        TResult Visit(MinusNode node, TParam param);
+        TResult Visit(TimesNode node, TParam param);
+        TResult Visit(FloatDivNode node, TParam param);
+        TResult Visit(IntDivNode node, TParam param);
+        TResult Visit(ModulusNode node, TParam param);
+        TResult Visit(ExponentiationNode node, TParam param);
+        TResult Visit(LiteralNode node, TParam param);
+        TResult Visit(VariableNode node, TParam param);
+
+        // Statement nodes
+        TResult Visit(AssignmentStmt node, TParam param);
+        TResult Visit(ReturnStmt node, TParam param);
+        TResult Visit(BlockStmt node, TParam param);
+    }
+
 }
