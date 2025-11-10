@@ -42,7 +42,7 @@ namespace AST
 
             // Execute the AST with a null initial scope
             // (the BlockStmt will use its own symbol table)
-            ast.Accept(this, null);
+            _returnValue = ast.Accept(this, null);  //Added _returnValue = -Rick
 
             return _returnValue;
         }
