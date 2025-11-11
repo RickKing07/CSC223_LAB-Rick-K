@@ -21,7 +21,7 @@ namespace AST
             return true;
         }
 
-        public bool AddEdge(T source, T destination) //if not already exists, addd argument exeption if source not in _adj
+        public bool AddEdge(T source, T destination)
         {
             if (!_adjacencyList.Keys.Contains(source) || !_adjacencyList.Keys.Contains(destination)) { throw new ArgumentException($"Node {source} or {destination} not in DiGraph"); }
             if (_adjacencyList[source].Contains(destination)) return false;
@@ -40,22 +40,23 @@ namespace AST
                 }
             }
 
-            _adjacencyList.Remove(vertex);  //removes the veretx itself
-            return true;
+            return _adjacencyList.Remove(vertex); //removes the veretx itself
         }
         public bool RemoveEdge(T source, T destination)
         {
+            //Ensure valid args
             if (!_adjacencyList.Keys.Contains(source) || !_adjacencyList.Keys.Contains(destination)) { throw new ArgumentException($"Node {source} or {destination} not in DiGraph"); }
             if (!_adjacencyList[source].Contains(destination)) return false;
-            _adjacencyList[source].Remove(destination);
-            return true; //Can you just return the line above?
+
+            //Remove
+            return _adjacencyList[source].Remove(destination);
         }
         public bool HasEdge(T source, T destination)
         {
             if (!_adjacencyList.Keys.Contains(source)) return false; //Should this use contains key we built or is .keys.contains okay?
             return _adjacencyList[source].Contains(destination);
         }
-        public List<T> GetNeighbors(T vertex) //add exeption throw
+        public List<T> GetNeighbors(T vertex)
         {
             if (!_adjacencyList.Keys.Contains(vertex)) throw new ArgumentException($"{vertex} not found in DiGraph");
             List<T> AdjacentNodes = new List<T>();
@@ -80,7 +81,9 @@ namespace AST
         }
         public int EdgeCount()
         {
+
             int count = 0;
+            //Loop the entire Dict keeping count of values
             foreach (T node in _adjacencyList.Keys)
             {
                 count += _adjacencyList[node].Count;
@@ -90,7 +93,7 @@ namespace AST
 
         public string ToString()
         {
-            //Just returns the adjlist in string form
+
             return $"Vertices: {VertexCount()} Edges: {EdgeCount()}. \n {_adjacencyList.ToString()}";
         }
     }
