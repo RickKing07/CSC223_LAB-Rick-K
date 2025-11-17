@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "/mnt/hardisk/CSC223_LAB-Rick-K/CSC-223/CSC-223.csproj": {}
+    "C:\\Users\\rickt\\OneDrive\\Documents\\CSC-223\\CSC-223\\CSC-223.csproj": {}
   },
   "projects": {
-    "/mnt/hardisk/CSC223_LAB-Rick-K/CSC-223/CSC-223.csproj": {
+    "C:\\Users\\rickt\\OneDrive\\Documents\\CSC-223\\CSC-223\\CSC-223.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/mnt/hardisk/CSC223_LAB-Rick-K/CSC-223/CSC-223.csproj",
+        "projectUniqueName": "C:\\Users\\rickt\\OneDrive\\Documents\\CSC-223\\CSC-223\\CSC-223.csproj",
         "projectName": "CSC-223",
-        "projectPath": "/mnt/hardisk/CSC223_LAB-Rick-K/CSC-223/CSC-223.csproj",
-        "packagesPath": "/home/astavak/.nuget/packages/",
-        "outputPath": "/mnt/hardisk/CSC223_LAB-Rick-K/CSC-223/obj/",
+        "projectPath": "C:\\Users\\rickt\\OneDrive\\Documents\\CSC-223\\CSC-223\\CSC-223.csproj",
+        "packagesPath": "C:\\Users\\rickt\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\rickt\\OneDrive\\Documents\\CSC-223\\CSC-223\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/home/astavak/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\rickt\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
@@ -38,7 +38,7 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.100"
+        "SdkAnalysisLevel": "9.0.300"
       },
       "frameworks": {
         "net9.0": {
@@ -72,18 +72,12 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
-          "downloadDependencies": [
-            {
-              "name": "Microsoft.AspNetCore.App.Ref",
-              "version": "[9.0.9, 9.0.9]"
-            }
-          ],
           "frameworkReferences": {
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/9.0.110/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
