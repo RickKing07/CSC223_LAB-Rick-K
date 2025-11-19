@@ -191,7 +191,7 @@ namespace AST
             {
                 if (stmt is BlockStmt)
                 {
-                    Visit(stmt, prev);
+                    Visit((BlockStmt)stmt, prev);
                 }
                 if (prev is ReturnStmt) //should this continue or break, should we even think about the program after the return statment? 
                 //Also make this not a continue, use an if else or something, switch up the order
