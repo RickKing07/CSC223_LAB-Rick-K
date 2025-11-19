@@ -184,25 +184,31 @@ namespace AST
 
         public object Visit(BlockStmt node, Statement prev)
         {
-            // Use this block's symbol table, which is already linked to its parent
-            //prev = node.accept
+            Statement lastStmt = prev;
 
             foreach (var stmt in node.Statements)
             {
-                if (stmt is BlockStmt)
+
+                if (lastStmt is ReturnStmt)
                 {
-                    Visit((BlockStmt)stmt, prev);
-                }
-                if (prev is ReturnStmt) //should this continue or break, should we even think about the program after the return statment? 
-                //Also make this not a continue, use an if else or something, switch up the order
-                {
-                    CFG.AddVertex(stmt);
+                    CFG.AddVertex(stmt);  // Add as unreachable vertex
                     continue;
                 }
-                stmt.Accept(this, prev);
-                prev = stmt;
+
+                if (stmt is BlockStmt)
+                {
+                    // Process nested block and get the last statement from it
+                    var lastFromBlock = Visit((BlockStmt)stmt, lastStmt);
+                    lastStmt = (Statement)lastFromBlock ?? lastStmt;
+                }
+                else
+                {
+                    stmt.Accept(this, lastStmt);
+                    lastStmt = stmt;
+                }
             }
-            return null;
+
+            return lastStmt;  // Return the last statement processed
         }
 
         public DiGraph<Statement> GetCFG() //Method to help test, might just be able to set up the get; property
