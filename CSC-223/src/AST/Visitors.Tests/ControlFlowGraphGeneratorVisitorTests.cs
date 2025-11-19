@@ -310,3 +310,552 @@ namespace DataStructures.Tests
         }
     }
 }
+
+namespace AST.Tests
+{
+    public class ControlFlowGraphGeneratorVisitorTests
+    {
+        // Helper method to create a simple assignment statement for testing
+        private AssignmentStmt CreateAssignment(string varName, int value)
+        {
+            return new AssignmentStmt(
+                new VariableNode(varName),
+                new LiteralNode(value)
+            );
+        }
+
+        private ReturnStmt CreateReturn(int value)
+        {
+            return new ReturnStmt(new LiteralNode(value));
+        }
+
+        #region Basic Initialization Tests
+
+        [Fact]
+        public void Constructor_WithValidStatement_InitializesCFGWithStartVertex()
+        {
+            // Arrange
+            var startStmt = CreateAssignment("x", 1);
+
+            // Act
+            var visitor = new ControlFlowGraphGeneratorVisitor(startStmt);
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.NotNull(cfg);
+            Assert.Equal(1, cfg.VertexCount());
+            Assert.Contains(startStmt, cfg.GetVertices());
+        }
+
+        [Fact]
+        public void Constructor_WithNullStatement_ThrowsException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() =>
+                new ControlFlowGraphGeneratorVisitor(null));
+        }
+
+        #endregion
+
+        #region Single Statement Tests
+
+        [Fact]
+        public void Visit_SingleAssignmentStatement_AddsVertexAndEdge()
+        {
+            // Arrange
+            var start = CreateAssignment("x", 1);
+            var stmt = CreateAssignment("y", 2);
+            var visitor = new ControlFlowGraphGeneratorVisitor(start);
+
+            // Act
+            visitor.Visit(stmt, start);
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.Equal(2, cfg.VertexCount());
+            Assert.True(cfg.HasEdge(start, stmt));
+        }
+
+        [Fact]
+        public void Visit_SingleReturnStatement_AddsVertexAndEdge()
+        {
+            // Arrange
+            var start = CreateAssignment("x", 1);
+            var returnStmt = CreateReturn(42);
+            var visitor = new ControlFlowGraphGeneratorVisitor(start);
+
+            // Act
+            visitor.Visit(returnStmt, start);
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.Equal(2, cfg.VertexCount());
+            Assert.True(cfg.HasEdge(start, returnStmt));
+        }
+
+        [Fact]
+        public void Visit_ReturnStatement_HasNoOutgoingEdges()
+        {
+            // Arrange
+            var start = CreateAssignment("x", 1);
+            var returnStmt = CreateReturn(42);
+            var visitor = new ControlFlowGraphGeneratorVisitor(start);
+
+            // Act
+            visitor.Visit(returnStmt, start);
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            var neighbors = cfg.GetNeighbors(returnStmt);
+            Assert.Empty(neighbors);
+        }
+
+        #endregion
+
+        #region Sequential Statement Tests
+
+        [Fact]
+        public void Visit_SequentialAssignments_CreatesLinearCFG()
+        {
+            // Arrange
+            var stmt1 = CreateAssignment("x", 1);
+            var stmt2 = CreateAssignment("y", 2);
+            var stmt3 = CreateAssignment("z", 3);
+            var visitor = new ControlFlowGraphGeneratorVisitor(stmt1);
+
+            // Act
+            visitor.Visit(stmt2, stmt1);
+            visitor.Visit(stmt3, stmt2);
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.Equal(3, cfg.VertexCount());
+            Assert.Equal(2, cfg.EdgeCount());
+            Assert.True(cfg.HasEdge(stmt1, stmt2));
+            Assert.True(cfg.HasEdge(stmt2, stmt3));
+            Assert.False(cfg.HasEdge(stmt1, stmt3)); // No direct edge
+        }
+
+        [Theory]
+        [InlineData(2)]
+        [InlineData(5)]
+        [InlineData(10)]
+        public void Visit_MultipleSequentialStatements_CreatesCorrectNumberOfVerticesAndEdges(int count)
+        {
+            // Arrange
+            var statements = new List<AssignmentStmt>();
+            for (int i = 0; i < count; i++)
+            {
+                statements.Add(CreateAssignment($"var{i}", i));
+            }
+            var visitor = new ControlFlowGraphGeneratorVisitor(statements[0]);
+
+            // Act
+            for (int i = 1; i < count; i++)
+            {
+                visitor.Visit(statements[i], statements[i - 1]);
+            }
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.Equal(count, cfg.VertexCount());
+            Assert.Equal(count - 1, cfg.EdgeCount());
+        }
+
+        #endregion
+
+        #region Block Statement Tests
+
+        [Fact]
+        public void Visit_EmptyBlockStatement_DoesNotAddVertices()
+        {
+            // Arrange
+            var start = CreateAssignment("x", 1);
+            var block = new BlockStmt(new List<Statement>());
+            var visitor = new ControlFlowGraphGeneratorVisitor(start);
+
+            // Act
+            visitor.Visit(block, start);
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.Equal(1, cfg.VertexCount()); // Only start statement
+        }
+
+        [Fact]
+        public void Visit_BlockWithSingleStatement_AddsVertexAndEdge()
+        {
+            // Arrange
+            var start = CreateAssignment("x", 1);
+            var innerStmt = CreateAssignment("y", 2);
+            var block = new BlockStmt(new List<Statement> { innerStmt });
+            var visitor = new ControlFlowGraphGeneratorVisitor(start);
+
+            // Act
+            visitor.Visit(block, start);
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.Equal(2, cfg.VertexCount());
+            Assert.True(cfg.HasEdge(start, innerStmt));
+        }
+
+        [Fact]
+        public void Visit_BlockWithMultipleStatements_CreatesSequentialFlow()
+        {
+            // Arrange
+            var start = CreateAssignment("x", 1);
+            var stmt1 = CreateAssignment("a", 10);
+            var stmt2 = CreateAssignment("b", 20);
+            var stmt3 = CreateAssignment("c", 30);
+            var block = new BlockStmt(new List<Statement> { stmt1, stmt2, stmt3 });
+            var visitor = new ControlFlowGraphGeneratorVisitor(start);
+
+            // Act
+            visitor.Visit(block, start);
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.Equal(4, cfg.VertexCount());
+            Assert.True(cfg.HasEdge(start, stmt1));
+            Assert.True(cfg.HasEdge(stmt1, stmt2));
+            Assert.True(cfg.HasEdge(stmt2, stmt3));
+        }
+
+        [Fact]
+        public void Visit_NestedBlocks_CreatesCorrectFlow()
+        {
+            // Arrange
+            var start = CreateAssignment("x", 1);
+            var stmt1 = CreateAssignment("a", 10);
+            var stmt2 = CreateAssignment("b", 20);
+            var innerBlock = new BlockStmt(new List<Statement> { stmt2 });
+            var outerBlock = new BlockStmt(new List<Statement> { stmt1, innerBlock });
+            var visitor = new ControlFlowGraphGeneratorVisitor(start);
+
+            // Act
+            visitor.Visit(outerBlock, start);
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.Equal(3, cfg.VertexCount());
+            Assert.True(cfg.HasEdge(start, stmt1));
+            Assert.True(cfg.HasEdge(stmt1, stmt2));
+        }
+
+        [Fact]
+        public void Visit_DeeplyNestedBlocks_CreatesCorrectFlow()
+        {
+            // Arrange
+            var start = CreateAssignment("x", 1);
+            var stmt1 = CreateAssignment("a", 10);
+            var stmt2 = CreateAssignment("b", 20);
+            var stmt3 = CreateAssignment("c", 30);
+
+            var innerMost = new BlockStmt(new List<Statement> { stmt3 });
+            var middle = new BlockStmt(new List<Statement> { stmt2, innerMost });
+            var outer = new BlockStmt(new List<Statement> { stmt1, middle });
+            var visitor = new ControlFlowGraphGeneratorVisitor(start);
+
+            // Act
+            visitor.Visit(outer, start);
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.Equal(4, cfg.VertexCount());
+            Assert.True(cfg.HasEdge(start, stmt1));
+            Assert.True(cfg.HasEdge(stmt1, stmt2));
+            Assert.True(cfg.HasEdge(stmt2, stmt3));
+        }
+
+        #endregion
+
+        #region Return Statement Flow Tests
+
+        [Fact]
+        public void Visit_BlockWithReturnInMiddle_StopsFlowAfterReturn()
+        {
+            // Arrange
+            var start = CreateAssignment("x", 1);
+            var stmt1 = CreateAssignment("a", 10);
+            var returnStmt = CreateReturn(42);
+            var stmt2 = CreateAssignment("b", 20); // Unreachable
+            var block = new BlockStmt(new List<Statement> { stmt1, returnStmt, stmt2 });
+            var visitor = new ControlFlowGraphGeneratorVisitor(start);
+
+            // Act
+            visitor.Visit(block, start);
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            // The implementation should handle this correctly
+            // stmt2 should either not be added or not be connected
+            Assert.True(cfg.HasEdge(start, stmt1));
+            Assert.True(cfg.HasEdge(stmt1, returnStmt));
+
+            // Check that return has no outgoing edges
+            var returnNeighbors = cfg.GetNeighbors(returnStmt);
+            Assert.Empty(returnNeighbors);
+        }
+
+        [Fact]
+        public void Visit_MultipleReturnsInDifferentBlocks_EachReturnHasNoOutgoingEdges()
+        {
+            // Arrange
+            var start = CreateAssignment("x", 1);
+            var return1 = CreateReturn(1);
+            var return2 = CreateReturn(2);
+            var visitor = new ControlFlowGraphGeneratorVisitor(start);
+
+            // Act
+            visitor.Visit(return1, start);
+            visitor.Visit(return2, start);
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.Empty(cfg.GetNeighbors(return1));
+            Assert.Empty(cfg.GetNeighbors(return2));
+        }
+
+        #endregion
+
+        #region Expression Node Tests (Should Not Create Vertices)
+
+        [Fact]
+        public void Visit_LiteralNode_DoesNotAddVertex()
+        {
+            // Arrange
+            var start = CreateAssignment("x", 1);
+            var literal = new LiteralNode(42);
+            var visitor = new ControlFlowGraphGeneratorVisitor(start);
+
+            // Act
+            visitor.Visit(literal, start);
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.Equal(1, cfg.VertexCount()); // Only start
+        }
+
+        [Fact]
+        public void Visit_VariableNode_DoesNotAddVertex()
+        {
+            // Arrange
+            var start = CreateAssignment("x", 1);
+            var variable = new VariableNode("y");
+            var visitor = new ControlFlowGraphGeneratorVisitor(start);
+
+            // Act
+            visitor.Visit(variable, start);
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.Equal(1, cfg.VertexCount()); // Only start
+        }
+
+        [Theory]
+        [InlineData(typeof(PlusNode))]
+        [InlineData(typeof(MinusNode))]
+        [InlineData(typeof(TimesNode))]
+        [InlineData(typeof(FloatDivNode))]
+        [InlineData(typeof(IntDivNode))]
+        [InlineData(typeof(ModulusNode))]
+        [InlineData(typeof(ExponentiationNode))]
+        public void Visit_BinaryOperatorNodes_DoNotAddVertices(Type nodeType)
+        {
+            // Arrange
+            var start = CreateAssignment("x", 1);
+            var left = new LiteralNode(1);
+            var right = new LiteralNode(2);
+            var node = (dynamic)Activator.CreateInstance(nodeType, left, right);
+            var visitor = new ControlFlowGraphGeneratorVisitor(start);
+
+            // Act
+            visitor.Visit(node, start);
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.Equal(1, cfg.VertexCount()); // Only start
+        }
+
+        #endregion
+
+        #region Complex Flow Tests
+
+        [Fact]
+        public void Visit_ComplexNestedStructure_BuildsCorrectCFG()
+        {
+            // Arrange: Create a complex structure with nested blocks
+            var start = CreateAssignment("init", 0);
+            var stmt1 = CreateAssignment("a", 1);
+            var stmt2 = CreateAssignment("b", 2);
+            var stmt3 = CreateAssignment("c", 3);
+            var stmt4 = CreateAssignment("d", 4);
+            var returnStmt = CreateReturn(100);
+
+            var innerBlock = new BlockStmt(new List<Statement> { stmt3, stmt4 });
+            var outerBlock = new BlockStmt(new List<Statement> { stmt1, stmt2, innerBlock, returnStmt });
+            var visitor = new ControlFlowGraphGeneratorVisitor(start);
+
+            // Act
+            visitor.Visit(outerBlock, start);
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.Equal(6, cfg.VertexCount());
+            Assert.True(cfg.HasEdge(start, stmt1));
+            Assert.True(cfg.HasEdge(stmt1, stmt2));
+            Assert.True(cfg.HasEdge(stmt2, stmt3));
+            Assert.True(cfg.HasEdge(stmt3, stmt4));
+            Assert.True(cfg.HasEdge(stmt4, returnStmt));
+        }
+
+        [Fact]
+        public void Visit_MixedStatementsAndBlocks_MaintainsCorrectOrder()
+        {
+            // Arrange
+            var start = CreateAssignment("start", 0);
+            var stmt1 = CreateAssignment("before", 1);
+            var blockStmt1 = CreateAssignment("in_block_1", 2);
+            var blockStmt2 = CreateAssignment("in_block_2", 3);
+            var stmt2 = CreateAssignment("after", 4);
+
+            var block = new BlockStmt(new List<Statement> { blockStmt1, blockStmt2 });
+            var visitor = new ControlFlowGraphGeneratorVisitor(start);
+
+            // Act
+            visitor.Visit(stmt1, start);
+            visitor.Visit(block, stmt1);
+            visitor.Visit(stmt2, blockStmt2); // Last statement in block
+
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.Equal(5, cfg.VertexCount());
+            Assert.True(cfg.HasEdge(start, stmt1));
+            Assert.True(cfg.HasEdge(stmt1, blockStmt1));
+            Assert.True(cfg.HasEdge(blockStmt1, blockStmt2));
+            Assert.True(cfg.HasEdge(blockStmt2, stmt2));
+        }
+
+        #endregion
+
+        #region Edge Cases and Error Conditions
+
+        [Fact]
+        public void Visit_SameStatementTwice_DoesNotCreateDuplicateVertex()
+        {
+            // Arrange
+            var start = CreateAssignment("x", 1);
+            var stmt = CreateAssignment("y", 2);
+            var visitor = new ControlFlowGraphGeneratorVisitor(start);
+
+            // Act
+            visitor.Visit(stmt, start);
+            visitor.Visit(stmt, start); // Try to add same statement again
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.Equal(2, cfg.VertexCount()); // Should still be 2
+        }
+
+        [Fact]
+        public void Visit_BlockWithOnlyReturnStatement_AddsOnlyReturn()
+        {
+            // Arrange
+            var start = CreateAssignment("x", 1);
+            var returnStmt = CreateReturn(42);
+            var block = new BlockStmt(new List<Statement> { returnStmt });
+            var visitor = new ControlFlowGraphGeneratorVisitor(start);
+
+            // Act
+            visitor.Visit(block, start);
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.Equal(2, cfg.VertexCount());
+            Assert.True(cfg.HasEdge(start, returnStmt));
+        }
+
+        #endregion
+
+        #region CFG Properties Tests
+
+        [Fact]
+        public void GetCFG_ReturnsNonNullGraph()
+        {
+            // Arrange
+            var start = CreateAssignment("x", 1);
+            var visitor = new ControlFlowGraphGeneratorVisitor(start);
+
+            // Act
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.NotNull(cfg);
+        }
+
+        [Fact]
+        public void Visit_LargeSequence_HandlesCorrectly()
+        {
+            // Arrange
+            var statements = new List<AssignmentStmt>();
+            for (int i = 0; i < 100; i++)
+            {
+                statements.Add(CreateAssignment($"var{i}", i));
+            }
+            var visitor = new ControlFlowGraphGeneratorVisitor(statements[0]);
+
+            // Act
+            for (int i = 1; i < 100; i++)
+            {
+                visitor.Visit(statements[i], statements[i - 1]);
+            }
+            var cfg = visitor.GetCFG();
+
+            // Assert
+            Assert.Equal(100, cfg.VertexCount());
+            Assert.Equal(99, cfg.EdgeCount());
+        }
+
+        [Fact]
+        public void Visit_AllVertices_AreReachableFromStart()
+        {
+            // Arrange
+            var start = CreateAssignment("x", 1);
+            var stmt1 = CreateAssignment("a", 10);
+            var stmt2 = CreateAssignment("b", 20);
+            var stmt3 = CreateAssignment("c", 30);
+            var visitor = new ControlFlowGraphGeneratorVisitor(start);
+
+            // Act
+            visitor.Visit(stmt1, start);
+            visitor.Visit(stmt2, stmt1);
+            visitor.Visit(stmt3, stmt2);
+            var cfg = visitor.GetCFG();
+
+            // Assert - All vertices should be reachable via BFS/DFS from start
+            var reachable = new HashSet<Statement>();
+            var queue = new Queue<Statement>();
+            queue.Enqueue(start);
+            reachable.Add(start);
+
+            while (queue.Count > 0)
+            {
+                var current = queue.Dequeue();
+                foreach (var neighbor in cfg.GetNeighbors(current))
+                {
+                    if (!reachable.Contains(neighbor))
+                    {
+                        reachable.Add(neighbor);
+                        queue.Enqueue(neighbor);
+                    }
+                }
+            }
+
+            Assert.Equal(cfg.VertexCount(), reachable.Count);
+        }
+
+        #endregion
+    }
+}

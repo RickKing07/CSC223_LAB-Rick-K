@@ -97,4 +97,118 @@ namespace AST
             return $"Vertices: {VertexCount()} Edges: {EdgeCount()}. \n {_adjacencyList.ToString()}";
         }
     }
+
+
+    /// <summary>
+    /// Exception thrown when an evaluation error occurs
+    /// </summary>
+    public class EvaluationException : Exception
+    {
+        public EvaluationException(string message) : base(message) { }
+    }
+
+    public class ControlFlowGraphGeneratorVisitor : IVisitor<Statement, object>
+    {
+        private DiGraph<Statement>? CFG;
+        public ControlFlowGraphGeneratorVisitor(Statement start)
+        {
+            CFG = new DiGraph<Statement>();
+            CFG.AddVertex(start); //verify its not a block stmnt "{" when you start
+        }
+        public object Visit(PlusNode node, Statement prev)
+        {
+            return null;
+        }
+
+        public object Visit(MinusNode node, Statement prev)
+        {
+            return null;
+        }
+
+        public object Visit(TimesNode node, Statement prev)
+        {
+            return null;
+        }
+
+        public object Visit(FloatDivNode node, Statement prev)
+        {
+            return null;
+        }
+
+        public object Visit(IntDivNode node, Statement prev)
+        {
+            return null;
+        }
+
+        public object Visit(ModulusNode node, Statement prev)
+        {
+            return null;
+        }
+
+        public object Visit(ExponentiationNode node, Statement prev)
+        {
+            return null;
+
+        }
+
+
+        #region Expression Node Visit Methods
+
+        public object Visit(VariableNode node, Statement prev)
+        {
+            return null;
+        }
+
+
+        public object Visit(LiteralNode node, Statement prev)
+        {
+            return null;
+        }
+
+        #endregion
+
+
+        public object Visit(AssignmentStmt node, Statement prev)
+        {
+            CFG.AddVertex(node);
+            CFG.AddEdge(prev, node);
+            return null;
+        }
+
+        public object Visit(ReturnStmt node, Statement prev)
+        {
+            CFG.AddVertex(node);
+            CFG.AddEdge(prev, node);
+            return null;
+        }
+
+        public object Visit(BlockStmt node, Statement prev)
+        {
+            // Use this block's symbol table, which is already linked to its parent
+            //prev = node.accept
+
+            foreach (var stmt in node.Statements)
+            {
+                if (stmt is BlockStmt)
+                {
+                    Visit(stmt, prev);
+                }
+                if (prev is ReturnStmt) //should this continue or break, should we even think about the program after the return statment? 
+                //Also make this not a continue, use an if else or something, switch up the order
+                {
+                    CFG.AddVertex(stmt);
+                    continue;
+                }
+                stmt.Accept(this, prev);
+                prev = stmt;
+            }
+            return null;
+        }
+
+        public DiGraph<Statement> GetCFG() //Method to help test, might just be able to set up the get; property
+        {
+            return CFG;
+        }
+    }
+
 }

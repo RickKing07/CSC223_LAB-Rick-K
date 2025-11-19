@@ -6,5 +6,12 @@ namespace AST
     {
         public Statement? Start { get; set; } //Starting point of our digraph
 
+
+        public CFG()
+        {
+            this.Start = null; //call a null digraph?
+        }
+
+
     }
 }
