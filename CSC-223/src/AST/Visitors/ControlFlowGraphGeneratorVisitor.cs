@@ -110,10 +110,9 @@ namespace AST
     public class ControlFlowGraphGeneratorVisitor : IVisitor<Statement, Statement>
     {
         private DiGraph<Statement>? CFG;
-        public ControlFlowGraphGeneratorVisitor(Statement start)
+        public ControlFlowGraphGeneratorVisitor()
         {
             CFG = new DiGraph<Statement>();
-            CFG.AddVertex(start); //verify its not a block stmnt "{" when you start
         }
         public Statement Visit(PlusNode node, Statement prev)
         {
