@@ -1,6 +1,7 @@
 using System.Net.Mail;
+using AST;
 
-namespace AST
+namespace Optimizer
 {
     public class CFG : DiGraph<Statement>
     {
@@ -11,7 +12,5 @@ namespace AST
         {
             this.Start = null; //call a null digraph?
         }
-
-
     }
 }

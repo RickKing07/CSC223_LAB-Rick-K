@@ -107,7 +107,7 @@ namespace AST
         public EvaluationException(string message) : base(message) { }
     }
 
-    public class ControlFlowGraphGeneratorVisitor : IVisitor<Statement, object>
+    public class ControlFlowGraphGeneratorVisitor : IVisitor<Statement, Statement>
     {
         private DiGraph<Statement>? CFG;
         public ControlFlowGraphGeneratorVisitor(Statement start)
@@ -115,37 +115,37 @@ namespace AST
             CFG = new DiGraph<Statement>();
             CFG.AddVertex(start); //verify its not a block stmnt "{" when you start
         }
-        public object Visit(PlusNode node, Statement prev)
+        public Statement Visit(PlusNode node, Statement prev)
         {
             return null;
         }
 
-        public object Visit(MinusNode node, Statement prev)
+        public Statement Visit(MinusNode node, Statement prev)
         {
             return null;
         }
 
-        public object Visit(TimesNode node, Statement prev)
+        public Statement Visit(TimesNode node, Statement prev)
         {
             return null;
         }
 
-        public object Visit(FloatDivNode node, Statement prev)
+        public Statement Visit(FloatDivNode node, Statement prev)
         {
             return null;
         }
 
-        public object Visit(IntDivNode node, Statement prev)
+        public Statement Visit(IntDivNode node, Statement prev)
         {
             return null;
         }
 
-        public object Visit(ModulusNode node, Statement prev)
+        public Statement Visit(ModulusNode node, Statement prev)
         {
             return null;
         }
 
-        public object Visit(ExponentiationNode node, Statement prev)
+        public Statement Visit(ExponentiationNode node, Statement prev)
         {
             return null;
 
@@ -154,13 +154,13 @@ namespace AST
 
         #region Expression Node Visit Methods
 
-        public object Visit(VariableNode node, Statement prev)
+        public Statement Visit(VariableNode node, Statement prev)
         {
             return null;
         }
 
 
-        public object Visit(LiteralNode node, Statement prev)
+        public Statement Visit(LiteralNode node, Statement prev)
         {
             return null;
         }
@@ -168,48 +168,58 @@ namespace AST
         #endregion
 
 
-        public object Visit(AssignmentStmt node, Statement prev)
+        public Statement Visit(AssignmentStmt node, Statement prev)
         {
             CFG.AddVertex(node);
-            CFG.AddEdge(prev, node);
-            return null;
+            if (prev != null)
+            {
+                CFG.AddEdge(prev, node);
+            }
+            return node;
         }
 
-        public object Visit(ReturnStmt node, Statement prev)
+        public Statement Visit(ReturnStmt node, Statement prev)
         {
             CFG.AddVertex(node);
-            CFG.AddEdge(prev, node);
-            return null;
+            if (prev != null)
+            {
+                CFG.AddEdge(prev, node);
+            }
+
+            return node;
         }
 
-        public object Visit(BlockStmt node, Statement prev)
+        // BlockStmt: Process statements sequentially, "folding" the block
+        public Statement Visit(BlockStmt node, Statement prev)
         {
-            Statement lastStmt = prev;
+            Statement lastStmt = prev;  // Start with the previous statement
 
             foreach (var stmt in node.Statements)
             {
-
+                // If we hit a return, stop (unreachable code after return)
                 if (lastStmt is ReturnStmt)
                 {
-                    CFG.AddVertex(stmt);  // Add as unreachable vertex
+                    // Still add unreachable statements as vertices (but no edges)
+                    if (stmt is AssignmentStmt || stmt is ReturnStmt)
+                    {
+                        CFG.AddVertex(stmt);
+                    }
                     continue;
                 }
 
-                if (stmt is BlockStmt)
+                // Process the statement and get the new "last statement"
+                Statement newLast = stmt.Accept(this, lastStmt);
+
+                // Update lastStmt for next iteration
+                if (newLast != null)
                 {
-                    // Process nested block and get the last statement from it
-                    var lastFromBlock = Visit((BlockStmt)stmt, lastStmt);
-                    lastStmt = (Statement)lastFromBlock ?? lastStmt;
-                }
-                else
-                {
-                    stmt.Accept(this, lastStmt);
-                    lastStmt = stmt;
+                    lastStmt = newLast;
                 }
             }
 
-            return lastStmt;  // Return the last statement processed
+            return lastStmt;  // Return the last statement from this block
         }
+
 
         public DiGraph<Statement> GetCFG() //Method to help test, might just be able to set up the get; property
         {
